@@ -55,6 +55,7 @@
   </section>
  </main>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const sieves=[
  {label:'3"',size:80,preferred:true},{label:'2 1/2"',size:63,preferred:false},{label:'2"',size:50,preferred:false},{label:'1 1/2"',size:40,preferred:true},{label:'1"',size:25,preferred:false},{label:'3/4"',size:20,preferred:true},{label:'1/2"',size:12.5,preferred:false},{label:'3/8"',size:10,preferred:true},{label:'#4',size:5,preferred:true},{label:'#8',size:2.5,preferred:true},{label:'#16',size:1.25,preferred:true},{label:'#30',size:.63,preferred:true},{label:'#50',size:.315,preferred:true},{label:'#100',size:.16,preferred:true},{label:'Residuo',size:null,preferred:false}
@@ -102,6 +103,138 @@ function renderBands(x){const assigned=x.compatible[0]||estimateBand(x)?.b||null
 function drawChart(x){const canvas=$('chart'),rect=canvas.getBoundingClientRect(),dpr=window.devicePixelRatio||1;canvas.width=Math.max(300,rect.width*dpr);canvas.height=Math.max(230,rect.height*dpr);const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);const W=rect.width,H=rect.height;ctx.clearRect(0,0,W,H);const m={l:49,r:16,t:12,b:36},pw=W-m.l-m.r,ph=H-m.t-m.b,lx0=Math.log10(.1),lx1=Math.log10(100),xp=v=>m.l+(Math.log10(v)-lx0)/(lx1-lx0)*pw,yp=v=>m.t+(100-v)/100*ph;ctx.font='11px Segoe UI, Arial';ctx.textAlign='right';ctx.textBaseline='middle';for(let y=0;y<=100;y+=20){const yy=yp(y);ctx.strokeStyle='#e3eaee';ctx.beginPath();ctx.moveTo(m.l,yy);ctx.lineTo(W-m.r,yy);ctx.stroke();ctx.fillStyle='#687780';ctx.fillText(String(y),m.l-8,yy)}ctx.textAlign='center';ctx.textBaseline='top';[.1,1,10,100].forEach(v=>{const xx=xp(v);ctx.strokeStyle='#e3eaee';ctx.beginPath();ctx.moveTo(xx,m.t);ctx.lineTo(xx,H-m.b);ctx.stroke();ctx.fillStyle='#687780';ctx.fillText(v===.1?'0,1':String(v),xx,H-m.b+7)});ctx.strokeStyle='#83939c';ctx.beginPath();ctx.moveTo(m.l,m.t);ctx.lineTo(m.l,H-m.b);ctx.lineTo(W-m.r,H-m.b);ctx.stroke();ctx.fillStyle='#53646d';ctx.textAlign='center';ctx.fillText('Abertura nominal del tamiz (mm) · escala logarítmica',m.l+pw/2,H-13);const palette=['#dd8a39','#4f8c6f','#8874a3','#c6574f','#2e88a8','#a7822d','#6c7990','#d06a9b','#48a49d'];const selected=x.compatible[0]||estimateBand(x)?.b||null;const legend=[];x.statuses.slice().sort((a,b)=>Number(a===selected)-Number(b===selected)).forEach(b=>{const bi=x.statuses.indexOf(b);const pts=[];b.ranges.forEach((lim,i)=>{if(Array.isArray(lim))pts.push({x:x.bandRows[i].nominal,lo:lim[0],hi:lim[1]})});pts.sort((a,b)=>a.x-b.x);if(pts.length){const color=palette[bi%palette.length];ctx.fillStyle=b===selected?'#c6574f22':color+'12';ctx.beginPath();pts.forEach((p,i)=>{const xx=xp(p.x),yy=yp(p.hi);i?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy)});for(let i=pts.length-1;i>=0;i--){const p=pts[i];ctx.lineTo(xp(p.x),yp(p.lo))}ctx.closePath();ctx.fill();ctx.strokeStyle=b===selected?'#b63832':color;ctx.lineWidth=b===selected?3.4:1.2;ctx.setLineDash(b===selected?[]:[5,3]);['lo','hi'].forEach(k=>{ctx.beginPath();pts.forEach((p,i)=>{const xx=xp(p.x),yy=yp(p[k]);i?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy)});ctx.stroke()});ctx.setLineDash([]);legend.push({color:b===selected?'#b63832':color,selected:b===selected,label:b.name+(b===selected?(b.status==='Cumple'?' · compatible':' · estimada'):'')})}});const curve=x.rows.filter(r=>r.size&&r.passing!==null).sort((a,b)=>a.size-b.size);if(curve.length){ctx.strokeStyle='#174b64';ctx.lineWidth=2.4;ctx.beginPath();curve.forEach((p,i)=>{const xx=xp(p.size),yy=yp(p.passing);i?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy)});ctx.stroke();ctx.fillStyle='#174b64';curve.forEach(p=>{ctx.beginPath();ctx.arc(xp(p.size),yp(p.passing),3,0,Math.PI*2);ctx.fill()})}$('legend').innerHTML='<span><i style="border-color:#174b64"></i>Curva del ensayo</span>'+legend.map(v=>'<span><i class="'+(v.selected?'':'dashline')+'" style="border-color:'+v.color+';'+(v.selected?'border-width:3px':'')+'"></i>'+v.label+'</span>').join('')}
 function resetOrExample(useExample){if(useExample)loadExample();else clearForm()}
 buildInputs();loadExample();['massA','massB','sample','student','date','material'].forEach(id=>$(id).addEventListener('input',update));$('loadExample').addEventListener('click',()=>resetOrExample(true));$('clearForm').addEventListener('click',()=>resetOrExample(false));$('printReport').addEventListener('click',()=>window.print());window.addEventListener('resize',()=>drawChart(calculate()));
+</script>
+<script>
+const SUPABASE_URL = 'https://ofvqefldyrpumltlxjpx.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_JDFn0ils3aopitNhFIgI4g_6gytIB1L';
+const authDb = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+let signedInUser = null, signedInProfile = null, activeEssayId = null, essayChannel = null;
+
+const authStyle = document.createElement('style');
+authStyle.textContent = `
+#authGate{max-width:500px;margin:42px auto;padding:26px;background:white;border:1px solid #d9e2e7;border-radius:14px;box-shadow:0 10px 30px #15364614}
+#authGate h2{margin:0 0 8px;color:#123b50}#authGate p{color:#61717b}
+#authGate label{display:block;margin:12px 0 5px;font-size:12px;font-weight:700;color:#435762}
+#authGate input{width:100%;padding:10px;border:1px solid #cbd7dd;border-radius:8px;font:14px inherit}
+#authGate .authActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+#authMessage{display:block;margin-top:12px;color:#174b64;font-size:13px;white-space:pre-wrap}
+#accountBar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 12px;color:#536873;font-size:12px}
+#accountBar button{padding:7px 10px}#savedPanel{background:white;border:1px solid #d9e2e7;border-radius:12px;margin-bottom:16px;padding:14px}
+#savedPanel h3{margin:0 0 8px;color:#123b50;font-size:15px}#savedList{display:flex;gap:7px;flex-wrap:wrap}
+.savedEssay{display:flex;gap:7px;align-items:center;border:1px solid #d9e2e7;background:#f8fbfc;border-radius:8px;padding:7px 9px;font-size:12px}
+.savedEssay button{padding:5px 8px;font-size:11px}#saveMessage{font-size:12px;color:#28734e;margin-left:5px}
+`;
+document.head.appendChild(authStyle);
+
+const authGate = document.createElement('section');
+authGate.id = 'authGate';
+authGate.innerHTML = `<h2>Acceso al laboratorio</h2><p>Ingresa con tu correo y contraseña, o crea una cuenta. Las cuentas nuevas se registran como alumno.</p>
+<label for="authEmail">Correo</label><input id="authEmail" type="email" autocomplete="username" required>
+<label for="authPassword">Contraseña</label><input id="authPassword" type="password" autocomplete="current-password" required>
+<div class="authActions"><button id="signInBtn" class="primary">Iniciar sesión</button><button id="signUpBtn">Crear cuenta de alumno</button></div><span id="authMessage" role="status"></span>`;
+document.querySelector('header').insertAdjacentElement('afterend', authGate);
+
+const appWrap = document.querySelector('.wrap');
+appWrap.style.display = 'none';
+const toolbarActions = document.querySelector('.toolbar .actions');
+const accountBar = document.createElement('div');
+accountBar.id = 'accountBar';
+accountBar.innerHTML = `<span id="accountLabel"></span><button id="newEssayBtn">Nuevo ensayo</button><button id="saveDraftBtn">Guardar avance</button><button id="finishEssayBtn" class="primary">Finalizar y guardar</button><button id="signOutBtn">Cerrar sesión</button><span id="saveMessage" role="status"></span>`;
+toolbarActions.insertAdjacentElement('beforebegin', accountBar);
+const savedPanel = document.createElement('section');
+savedPanel.id = 'savedPanel';
+savedPanel.innerHTML = `<h3 id="savedHeading">Mis ensayos guardados</h3><div id="savedList"></div>`;
+document.querySelector('.toolbar').insertAdjacentElement('afterend', savedPanel);
+
+const authMsg = (text, isError=false) => { const el=document.getElementById('authMessage'); el.textContent=text; el.style.color=isError?'#9d3d37':'#174b64'; };
+const saveMsg = (text, isError=false) => { const el=document.getElementById('saveMessage'); el.textContent=text; el.style.color=isError?'#9d3d37':'#28734e'; };
+const esc = value => String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+async function signUpStudent(){
+  const email=document.getElementById('authEmail').value.trim();
+  const password=document.getElementById('authPassword').value;
+  authMsg('Creando cuenta…');
+  const {data,error}=await authDb.auth.signUp({email,password,options:{emailRedirectTo:window.location.origin+window.location.pathname}});
+  if(error){authMsg(error.message,true);return}
+  if(data.session){authMsg('Cuenta creada. Iniciando…');return}
+  authMsg('Cuenta creada. Revisa tu correo y confirma el registro antes de iniciar sesión.');
+}
+async function signInStudent(){
+  const email=document.getElementById('authEmail').value.trim();
+  const password=document.getElementById('authPassword').value;
+  authMsg('Iniciando sesión…');
+  const {error}=await authDb.auth.signInWithPassword({email,password});
+  if(error) authMsg(error.message,true);
+}
+async function enterWorkspace(user){
+  if(signedInUser?.id===user.id && signedInProfile){await refreshSavedEssays();return}
+  signedInUser=user;
+  const {data:profile,error}=await authDb.from('perfiles').select('id,correo,rol').eq('id',user.id).single();
+  if(error||!profile){signedInUser=null;authGate.style.display='block';appWrap.style.display='none';authMsg('No se encontró el perfil. Verifica que ejecutaste 01_esquema_seguro.sql en Supabase.',true);return}
+  signedInProfile=profile;
+  authGate.style.display='none';appWrap.style.display='block';
+  document.getElementById('accountLabel').textContent=(profile.rol==='profesor'?'Profesor':'Alumno')+' · '+user.email;
+  document.getElementById('savedHeading').textContent=profile.rol==='profesor'?'Ensayos de todos los alumnos':'Mis ensayos guardados';
+  const studentField=document.getElementById('student');studentField.value=user.email;studentField.readOnly=true;
+  activeEssayId=null;clearForm();studentField.value=user.email;studentField.readOnly=true;
+  await refreshSavedEssays();
+  if(essayChannel) await authDb.removeChannel(essayChannel);
+  essayChannel=authDb.channel('ensayos-en-vivo').on('postgres_changes',{event:'*',schema:'public',table:'ensayos'},()=>refreshSavedEssays()).subscribe();
+}
+function leaveWorkspace(){
+  signedInUser=null;signedInProfile=null;activeEssayId=null;
+  if(essayChannel){authDb.removeChannel(essayChannel);essayChannel=null}
+  appWrap.style.display='none';authGate.style.display='block';savedPanel.scrollIntoView({block:'nearest'});
+}
+async function refreshSavedEssays(){
+  if(!signedInUser)return;
+  const {data,error}=await authDb.from('ensayos').select('id,titulo,material,estado,actualizado_en,datos').order('actualizado_en',{ascending:false}).limit(100);
+  const list=document.getElementById('savedList');
+  if(error){list.textContent='No se pudieron cargar los ensayos: '+error.message;return}
+  if(!data?.length){list.textContent='Todavía no hay ensayos guardados.';return}
+  list.innerHTML=data.map(row=>`<div class="savedEssay"><span>${esc(row.titulo)} · ${esc(row.material)} · ${row.estado==='finalizado'?'Finalizado':'Borrador'}${signedInProfile?.rol==='profesor'?' · '+esc(row.datos?.alumno||''):''}</span><button data-open-essay="${esc(row.id)}">Abrir</button></div>`).join('');
+}
+function collectEssay(){
+  const x=calculate();
+  return {alumno:signedInUser.email,muestra:document.getElementById('sample').value.trim()||'Ensayo sin nombre',fecha:document.getElementById('date').value||null,material:document.getElementById('material').value,masaA:document.getElementById('massA').value,masaB:document.getElementById('massB').value,mallas:Array.from(document.querySelectorAll('[data-mass]')).map(el=>el.value),resultado:{masaBUsada:x.B,sumaRetenida:x.roundedSum,error:x.error,limiteError:x.errMax,finosLavado:x.fines,moduloFinura:x.fm,Da:x.da,TMN:x.tmn,bandaCompatible:x.compatible.map(b=>b.name),bandas:x.statuses.map(b=>({nombre:b.name,estado:b.status,fuerasDeRango:b.failures.length}))}};
+}
+async function saveEssay(finalize){
+  if(!signedInUser)return;
+  const snapshot=collectEssay();
+  if(finalize && !calculate().allSieveMasses){saveMsg('Completa las masas (usa 0 g si no quedó material) antes de finalizar.',true);return}
+  const estado=finalize?'finalizado':'borrador';
+  const record={propietario:signedInUser.id,titulo:snapshot.muestra,material:snapshot.material,estado,datos:snapshot};
+  saveMsg('Guardando…');
+  let response;
+  if(activeEssayId) response=await authDb.from('ensayos').update(record).eq('id',activeEssayId).select('id').single();
+  else response=await authDb.from('ensayos').insert(record).select('id').single();
+  if(response.error){saveMsg(response.error.message,true);return}
+  activeEssayId=response.data.id;saveMsg(finalize?'Ensayo finalizado y guardado.':'Avance guardado.');
+  await refreshSavedEssays();
+}
+async function openEssay(id){
+  const {data,error}=await authDb.from('ensayos').select('id,estado,datos').eq('id',id).single();
+  if(error||!data){saveMsg('No fue posible abrir este ensayo.',true);return}
+  const d=data.datos;activeEssayId=data.id;
+  document.getElementById('sample').value=d.muestra||'';document.getElementById('student').value=d.alumno||signedInUser.email;
+  document.getElementById('date').value=d.fecha||'';document.getElementById('material').value=d.material||'Grava';
+  document.getElementById('massA').value=d.masaA||'';document.getElementById('massB').value=d.masaB||'';
+  document.querySelectorAll('[data-mass]').forEach((el,i)=>el.value=d.mallas?.[i]??'');
+  update();saveMsg(data.estado==='finalizado'?'Ensayo finalizado cargado.':'Borrador cargado.');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+document.getElementById('signUpBtn').addEventListener('click',signUpStudent);
+document.getElementById('signInBtn').addEventListener('click',signInStudent);
+document.getElementById('signOutBtn').addEventListener('click',async()=>{await authDb.auth.signOut();leaveWorkspace()});
+document.getElementById('saveDraftBtn').addEventListener('click',()=>saveEssay(false));
+document.getElementById('finishEssayBtn').addEventListener('click',()=>saveEssay(true));
+document.getElementById('newEssayBtn').addEventListener('click',()=>{activeEssayId=null;clearForm();document.getElementById('student').value=signedInUser.email;document.getElementById('student').readOnly=true;saveMsg('Nuevo ensayo listo.')});
+document.getElementById('savedList').addEventListener('click',event=>{const button=event.target.closest('[data-open-essay]');if(button)openEssay(button.dataset.openEssay)});
+document.getElementById('clearForm').addEventListener('click',()=>{activeEssayId=null;setTimeout(()=>{if(signedInUser){document.getElementById('student').value=signedInUser.email;document.getElementById('student').readOnly=true}},0)});
+authDb.auth.onAuthStateChange((_event,session)=>{if(session?.user) setTimeout(()=>enterWorkspace(session.user),0);else leaveWorkspace()});
+authDb.auth.getSession().then(({data})=>{if(data.session?.user)enterWorkspace(data.session.user);else leaveWorkspace()});
+
 </script>
 </body>
 </html>
