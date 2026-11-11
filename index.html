@@ -122,7 +122,7 @@ authStyle.textContent = `
 #accountBar button{padding:7px 10px}#savedPanel{background:white;border:1px solid #d9e2e7;border-radius:12px;margin-bottom:16px;padding:14px}
 #savedPanel h3{margin:0 0 8px;color:#123b50;font-size:15px}#savedList{display:flex;gap:7px;flex-wrap:wrap}
 .savedEssay{display:flex;gap:7px;align-items:center;border:1px solid #d9e2e7;background:#f8fbfc;border-radius:8px;padding:7px 9px;font-size:12px}
-.savedEssay button{padding:5px 8px;font-size:11px}#saveMessage{font-size:12px;color:#28734e;margin-left:5px}
+.savedEssay button{padding:5px 8px;font-size:11px}.savedEssay .deleteEssay{color:#a3342c;border-color:#e7b7b3;background:#fff7f6}#saveMessage{font-size:12px;color:#28734e;margin-left:5px}
 `;
 document.head.appendChild(authStyle);
 
@@ -192,7 +192,7 @@ async function refreshSavedEssays(){
   const list=document.getElementById('savedList');
   if(error){list.textContent='No se pudieron cargar los ensayos: '+error.message;return}
   if(!data?.length){list.textContent='Todavía no hay ensayos guardados.';return}
-  list.innerHTML=data.map(row=>`<div class="savedEssay"><span>${esc(row.titulo)} · ${esc(row.material)} · ${row.estado==='finalizado'?'Finalizado':'Borrador'}${signedInProfile?.rol==='profesor'?' · '+esc(row.datos?.alumno||''):''}</span><button data-open-essay="${esc(row.id)}">Abrir</button></div>`).join('');
+  list.innerHTML=data.map(row=>`<div class="savedEssay"><span>${esc(row.titulo)} · ${esc(row.material)} · ${row.estado==='finalizado'?'Finalizado':'Borrador'}${signedInProfile?.rol==='profesor'?' · '+esc(row.datos?.alumno||''):''}</span><button data-open-essay="${esc(row.id)}">Abrir</button>${signedInProfile?.rol==='profesor'?'<button class="deleteEssay" data-delete-essay="'+esc(row.id)+'" title="Eliminar ensayo" aria-label="Eliminar ensayo">Eliminar</button>':''}</div>`).join('');
 }
 function collectEssay(){
   const x=calculate();
@@ -224,13 +224,26 @@ async function openEssay(id){
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
+async function deleteEssay(id){
+  if(signedInProfile?.rol!=='profesor')return;
+  const item=document.querySelector('[data-delete-essay="'+CSS.escape(id)+'"]')?.closest('.savedEssay');
+  const label=item?.querySelector('span')?.textContent||'este ensayo';
+  if(!window.confirm('¿Eliminar '+label+'? Esta acción es permanente. El alumno podrá crear otro ensayo corregido.'))return;
+  saveMsg('Eliminando ensayo…');
+  const {error}=await authDb.from('ensayos').delete().eq('id',id);
+  if(error){saveMsg('No se pudo eliminar: '+error.message,true);return}
+  if(activeEssayId===id){activeEssayId=null;clearForm();document.getElementById('student').value=signedInUser.email;document.getElementById('student').readOnly=true}
+  saveMsg('Ensayo eliminado. El alumno puede crear uno nuevo.');
+  await refreshSavedEssays();
+}
+
 document.getElementById('signUpBtn').addEventListener('click',signUpStudent);
 document.getElementById('signInBtn').addEventListener('click',signInStudent);
 document.getElementById('signOutBtn').addEventListener('click',async()=>{await authDb.auth.signOut();leaveWorkspace()});
 document.getElementById('saveDraftBtn').addEventListener('click',()=>saveEssay(false));
 document.getElementById('finishEssayBtn').addEventListener('click',()=>saveEssay(true));
 document.getElementById('newEssayBtn').addEventListener('click',()=>{activeEssayId=null;clearForm();document.getElementById('student').value=signedInUser.email;document.getElementById('student').readOnly=true;saveMsg('Nuevo ensayo listo.')});
-document.getElementById('savedList').addEventListener('click',event=>{const button=event.target.closest('[data-open-essay]');if(button)openEssay(button.dataset.openEssay)});
+document.getElementById('savedList').addEventListener('click',event=>{const del=event.target.closest('[data-delete-essay]');if(del){deleteEssay(del.dataset.deleteEssay);return}const button=event.target.closest('[data-open-essay]');if(button)openEssay(button.dataset.openEssay)});
 document.getElementById('clearForm').addEventListener('click',()=>{activeEssayId=null;setTimeout(()=>{if(signedInUser){document.getElementById('student').value=signedInUser.email;document.getElementById('student').readOnly=true}},0)});
 authDb.auth.onAuthStateChange((_event,session)=>{if(session?.user) setTimeout(()=>enterWorkspace(session.user),0);else leaveWorkspace()});
 authDb.auth.getSession().then(({data})=>{if(data.session?.user)enterWorkspace(data.session.user);else leaveWorkspace()});
