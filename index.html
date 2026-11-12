@@ -208,7 +208,7 @@ const toolbarActions = document.querySelector('.toolbar .actions');
 const accountBar = document.createElement('div');
 accountBar.id = 'accountBar';
 accountBar.innerHTML = `<span id="accountLabel"></span><button id="homeBtn" class="hidden">Áreas de laboratorio</button><button data-module-action id="newEssayBtn">Nuevo ensayo</button><button data-module-action id="saveDraftBtn">Guardar avance</button><button data-module-action id="finishEssayBtn" class="primary">Finalizar y guardar</button><button id="signOutBtn">Cerrar sesión</button><span id="saveMessage" role="status"></span>`;
-toolbarActions.insertAdjacentElement('beforebegin', accountBar);
+document.querySelector('.toolbar').insertAdjacentElement('beforebegin', accountBar);
 const portalHome = document.createElement('section');
 portalHome.id = 'portalHome';
 portalHome.innerHTML = `
